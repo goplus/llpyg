@@ -102,7 +102,7 @@ Github release 页面存放的二进制文件的作用是实现 LLGo 对 Python 
 
 ### LLPkgStore
 
-LLPkgStore 是一个为 LLGo 设计的包分发服务。自动生成 LLPkg，并将其上传到 LLPkg 仓库中。
+LLPkgStore 是为 LLGo 设计的包分发服务，负责自动生成 LLPkg 并将其上传至 LLPkg 仓库。
 
 **包生成流程：**
 
