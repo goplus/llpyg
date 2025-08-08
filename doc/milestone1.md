@@ -357,12 +357,8 @@ LLPkgStore 采用 Conan 作为 C/C++ 语言的包管理解决方案，主要用�
 
 ### **llpkg.cfg 设计决策**
 
-llpkg.cfg 目前通过 `installer.name` 字段获取包生成器类型，但这种将语言环境与包管理器强绑定的做法存在明显缺陷：
-
-- 若未来更换包管理工具（如 Python 环境不再使用 pip/uv 或 C++ 环境弃用 conan），就需要新增标识字段，导致维护成本增加。
-- 由于该配置文件还需服务于 `llgo get` 等其他命令，仅通过包管理器来区分语言类型会严重制约系统的扩展性。
-
-因此，在 llpkg.cfg 中增加 "type" 字段，用以区分用户需要生成的包的语言类型（C/C++ 还是 Python），而不采用原先的通过包管理器进行区分。以 llpkg.cfg 进行举例：
+在引入 Python 类型的 llpkg 后，llpkg.cfg 不应仅依赖 installer.name 判定生成器类型，还需让生成工具显式识别目标包语言（C/C++ 或 Python），以便选择匹配的构建与打包流程。
+因此，建议在 llpkg.cfg 增加 type 字段，用于标识包语言类型（C/C++ 或 Python），而非继续依赖包管理器进行间接区分。示例如下：
 
 ```JSON
 {
