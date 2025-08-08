@@ -133,10 +133,8 @@ LLPkgStore 是一个为 LLGo 设计的包分发服务。自动生成 LLPkg，并
 ```Go
 // 定义了项目的依赖包及其版本
 require (
-        github.com/goplus/cobra v1.9.12 //gop:class
-        github.com/goplus/gogen v1.19.0
+    github.com/pkg/errors v0.9.1
 )
-
 // indirect：表示这些依赖是间接依赖，不是项目直接引用的，而是由其他依赖传递引入的
 require (
         golang.org/x/mod v0.26.0 // indirect
