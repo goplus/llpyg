@@ -8,7 +8,7 @@
 
 LLGo 使用 Python 的用户体验：
 
-![LLGO 使用 Python 体验](./figures/milestone1/llgo_run_python.png)
+![LLGo 使用 Python 体验](./figures/milestone1/llgo_run_python.png)
 
 **最终目标**：
 
@@ -62,7 +62,7 @@ llpyg 用于为指定的 Python 库生成对应的 LLGo Bindings，命令示例�
 1. pydump：从 Python 模块中提取符号信息
 2. pysigfetch：从第三方库的官网文档中爬取数据，用于补充函数签名
 
-**llpyg 生成 Go bindings 流程：**
+**llpyg 生成 LLGo bindings 流程：**
 
 1. pydump：利用反射获取 Python 模块下的所有符号信息，包括名称、类型、文档和函数签名
 2. 使用 gogen 初始化 go 代码，导入必要模块，设置 LLGoPackage
@@ -98,7 +98,7 @@ pylib/numpy/
 
 Github release 页面存放的二进制文件的作用是实现 LLGo 对 Python 库的开箱即用。
 
-当用户执行 `llgo build` 时，会尝试从 Github release 中拉取运行所需要的二进制文件，使得无需无需额外的环境配置与包管理。
+当用户执行 `llgo build` 时，会尝试从 Github release 中拉取运行所需要的二进制文件，使得无需额外的环境配置与包管理。
 
 ### LLPkgStore
 
@@ -122,7 +122,7 @@ LLPkgStore 是一个为 LLGo 设计的包分发服务。自动生成 LLPkg，并
 
 ### Go Module
 
-从 1.13 版本开始， Go 语言默认使用 Go Module 作为依赖管理工具，核心概念：
+从 1.13 版本开始 Go 语言默认使用 Go Module 作为依赖管理工具，核心概念：
 
 1. go.mod：定义模块名称、Go 版本和依赖项
 2. go.sum：记录依赖项的校验和，确保一致性
@@ -130,7 +130,7 @@ LLPkgStore 是一个为 LLGo 设计的包分发服务。自动生成 LLPkg，并
 
 `go.mod` 中声明了项目的依赖：
 
-```JavaScript
+```Go
 // 定义了项目的依赖包及其版本
 require (
         github.com/goplus/cobra v1.9.12 //gop:class
@@ -222,10 +222,10 @@ PEP 440 是 Python 官方定义的版本标识和依赖规范，版本号基本�
 
 为将庞大而复杂的 CPython 库完整地转换 LLGo 可使用的 Go 语言包，我们探索了两种主要途径：
 
-1. 使用 llcppg 构建 C Python
+1. 使用 llcppg 构建 CPython
 2. 利用预编译的独立 Python 发行版
 
-### 路线一：使用 llcppg构建C Python
+### 路线一：使用 llcppg构建 CPython
 
 通过 [Conan Center](https://conan.io/center) 提供的 CPython 包结构，我们可以系统地构建 CPython 及其所有依赖。
 
@@ -291,7 +291,7 @@ graph TD
 
 ### **方案决策**
 
-采用 `python-build-standalone` 是一个**更高效**的方案。它极大地简化了环境配置，使我们能够专注于核心的 Go-Python 交互逻辑，而非陷入底层库的编译和打包泥潭。
+采用 `python-build-standalone` 是一个**更高效**的方案。它极大地简化了环境配置，使我们能够专注于核心的 LLGo-Python 交互逻辑，而非陷入底层库的编译和打包泥潭。
 
 ## Python 函数签名获取
 
