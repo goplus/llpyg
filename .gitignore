@@ -5,3 +5,6 @@
 # ide related
 **/.vscode/
 **/.idea/
+
+# self
+.gitignore
