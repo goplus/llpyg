@@ -78,7 +78,7 @@ llpyg 用于为指定的 Python 库生成对应的 LLGo Bindings，命令示例�
 - 支持处理的函数类型有限
 - pysigfetch 工具并不通用
 
-## LLPKg与LLPkgStore
+## LLPkg与LLPkgStore
 
 ### LLPkg
 
@@ -96,7 +96,7 @@ pylib/numpy/
     └── ranom.go        // numpy.random 模块的 go binding
 ```
 
-Github release 页面存放的二进制文件的作用是实现 LLGo 对 Python 库的开箱即用。
+GitHub release 页面存放的二进制文件的作用是实现 LLGo 对 Python 库的开箱即用。
 
 当用户执行 `llgo build` 时，会尝试从 Github release 中拉取运行所需要的二进制文件，使得无需额外的环境配置与包管理。
 
