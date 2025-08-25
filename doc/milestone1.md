@@ -201,8 +201,7 @@ PEP 440 是 Python 官方定义的版本标识和依赖规范，版本号基本�
 ```JSON
 {
   "name": "numpy",
-  "pythonLib": "numpy",
-  "pythonLibVersion": "2.3.0",
+  "libName": "numpy",
   "deps": ["github.com/goplus/llpkg/numpy"]
 }
 ```
@@ -210,8 +209,7 @@ PEP 440 是 Python 官方定义的版本标识和依赖规范，版本号基本�
 ### 选项说明
 
 - **name**：生成的 Go 包名和输出目录名。Go 语言的包名具有一定的要求，不允许有连字符或者大写字母的，为了符合 Go 的命名规则，需要对一些Python 库的名称进行修改。
-- **pythonLib**：要转换的 Python 库名。llpyg 根据该字段导入指定 Python 模块进行分析。
-- **pythonLibVersion**：明确版本，不同版本的 Python 库有不同的 API，根据版本选择正确的 API 调用，避免生成不兼容的代码。
+- **libName**：要转换的 Python 库名。llpyg 根据该字段导入指定 Python 库进行分析。
 - **deps**：标明当前包所依赖的其他包。
 
 ## Python 环境构建
