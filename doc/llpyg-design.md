@@ -53,12 +53,12 @@ llpyg 使用的是用户已经安装好的 Python 库的版本。用户若想转
 
 **命令输入执行**
 ```bash
-llpyg [-o ouput_dir] [-mod mod_name] [-d module_depth] py_lib_name
+llpyg [-o output_dir] [-mod mod_name] [-d module_depth] py_lib_name
 ```
 参数说明：
 - `-o`: 输出目录，默认值为 `./test`
-- `-mod`: 生成 Go 模块名称，默认值为空
-- `-d`: 获取 Python 库的模块的深度，默认值为 1
+- `-mod`: 生成 Go 模块名称，默认值为 Python 库名称
+- `-d`: 获取 Python 库的模块的最大深度，默认值为 1
 - `py_lib_name`: Python 库名称
 
 **配置文件输入执行**
