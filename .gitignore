@@ -6,5 +6,16 @@
 **/.vscode/
 **/.idea/
 
+# self
+.gitignore
+
 # test
 **/test
+test*
+!tool/**/test
+
+# cfg
+**/*.cfg
+
+# go.work
+go.work
