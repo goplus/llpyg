@@ -44,6 +44,49 @@ llpyg 使用的是用户已经安装好的 Python 库的版本。用户若想转
 
 用户可以通过 `PYTHONHOME` 环境变量来指定 Python 路径。 llpyg 并不会提供一个单独的环境变量。
 
+### Python Class 对应的 LLGo Bindings 设计
+
+> https://github.com/goplus/llpyg/issues/14
+
+我们将 Python 类转换为了 Go 语言中的结构体，通过 NewClassName 函数来创建实例:
+
+```go
+type Animal struct {
+	py.Object
+}
+
+//go:linkname NewAnimal py.Animal
+func NewAnimal(name *py.Object) *Animal
+
+type Dog struct {
+	Animal
+}
+
+//go:linkname NewDog py.Dog
+func NewDog(name *py.Object, age *py.Object) *Dog
+```
+
+将静态方法、类方法、实例方法统一转换为了结构体方法：
+```go
+//llgo:link (*Dog).Speak py.Dog.speak
+func (d *Dog) Speak(msg py.Object) *py.Object {
+	return nil
+}
+```
+
+对于属性和 properties，分为了 get 和 set 方法：
+```go
+//llgo:link (*Dog).Age py.Dog.age.__get__
+func (d *Dog) Age() *py.Object {
+	return nil
+}
+
+//llgo:link (*Dog).SetAge py.Dog.age.__set__
+func (d *Dog) SetAge(age *py.Object) {
+}
+```
+
+
 ## 架构设计
 
 ### 输入输出
