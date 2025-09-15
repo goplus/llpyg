@@ -17,12 +17,13 @@ import (
 )
 
 type context struct {
-	pkg    *gogen.Package
-	obj    *types.Named
-	objPtr *types.Pointer
-	ret    *types.Tuple
-	py     gogen.PkgRef
-	skips  []symbol
+	pkg    		*gogen.Package
+	obj    		types.Type
+	objPtr 		*types.Pointer
+	ret    		*types.Tuple
+	py     		gogen.PkgRef
+	structs 	map[string]types.Type
+	skips  		[]symbol
 }
 
 
@@ -84,10 +85,10 @@ func createGoPackage(mod module) (ctx *context) {
 	defs := pkg.NewConstDefs(pkg.Types.Scope())
 	defs.New(f, 0, 0, nil, "LLGoPackage") // const LLGoPackage = "py.moduleName"
 
-	obj := py.Ref("Object").(*types.TypeName).Type().(*types.Named)
+	obj := py.Ref("Object").(*types.TypeName).Type()
 	objPtr := types.NewPointer(obj)
 	ret := types.NewTuple(pkg.NewParam(0, "", objPtr)) // return *py.Object
-	ctx = &context{pkg, obj, objPtr, ret, py, nil}
+	ctx = &context{pkg, obj, objPtr, ret, py, make(map[string]types.Type), nil}
 	return ctx
 }
 
@@ -102,7 +103,9 @@ func (ctx *context) genMod(pkg *gogen.Package, mod *module) {
 		funcMap[sym.Name] = true
 		ctx.genFunc(pkg, sym)
 	}
-	// Todo: class, variable, etc.
+	// classes
+	ctx.genClasses(pkg, mod.Classes, mod.Name)
+	// Todo: variable, etc.
 }
 
 
