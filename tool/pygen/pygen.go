@@ -10,39 +10,19 @@ import (
 	"strings"
 	"log"
 	"strconv"
-	"go/token"
 	"go/ast"
 	"go/types"
 	"github.com/goplus/gogen"
 	"github.com/goplus/llpyg/tool/pysig"
 )
 
-
-type symbol struct {
-	Name string `json:"name"` // python name
-	Type string `json:"type"`
-	Doc  string `json:"doc"`
-	Sig  string `json:"sig"`
-}
-
-type module struct {
-	Name  string    `json:"name"` // python module name
-	Items []*symbol `json:"items"`
-}
-
 type context struct {
 	pkg    *gogen.Package
 	obj    *types.Named
 	objPtr *types.Pointer
 	ret    *types.Tuple
-	skips  []element
-	todos  []element
 	py     gogen.PkgRef
-}
-
-type element struct {
-	name   string
-	pyType string
+	skips  []symbol
 }
 
 
@@ -107,56 +87,24 @@ func createGoPackage(mod module) (ctx *context) {
 	obj := py.Ref("Object").(*types.TypeName).Type().(*types.Named)
 	objPtr := types.NewPointer(obj)
 	ret := types.NewTuple(pkg.NewParam(0, "", objPtr)) // return *py.Object
-	ctx = &context{pkg, obj, objPtr, ret, nil, nil, py}
+	ctx = &context{pkg, obj, objPtr, ret, py, nil}
 	return ctx
 }
 
-var pyFuncTypes = map[string]bool{
-	"ufunc": true,
-	"method": true,
-	"function": true,
-	"method-wrapper": true,
-	"builtin_function_or_method": true,
-	"_ArrayFunctionDispatcher": true,
-}
 
 func (ctx *context) genMod(pkg *gogen.Package, mod *module) {
+	// global functions
 	funcMap := make(map[string]bool)
-	for _, sym := range mod.Items {
+	for _, sym := range mod.Functions {
 		if funcMap[sym.Name] {
 			continue
 		}
-		if pyFuncTypes[sym.Type] {
-			funcMap[sym.Name] = true
-			ctx.genFunc(pkg, sym)
-		}
-		// Todo: class, variable, etc.
-		ctx.todos = append(ctx.todos, element{name: sym.Name, pyType: sym.Type})
+		funcMap[sym.Name] = true
+		ctx.genFunc(pkg, sym)
 	}
+	// Todo: class, variable, etc.
 }
 
-func (ctx *context) genFunc(pkg *gogen.Package, sym *symbol) {
-	name, symSig := sym.Name, sym.Sig
-	if len(name) == 0 || name[0] == '_' {
-		return
-	}
-	if symSig == "" { // no signature
-		ctx.skips = append(ctx.skips, element{name: name, pyType: sym.Type})
-		return
-	}
-	// signature
-	params, variadic := ctx.genParams(pkg, symSig)
-	name = genName(name, -1)
-	sig := types.NewSignatureType(nil, nil, nil, params, ctx.ret, variadic) // ret: *py.Object
-	fn := pkg.NewFuncDecl(token.NoPos, name, sig)
-	// doc
-	docList := ctx.genDoc(sym.Doc)
-	if len(docList) > 0 {
-		docList = append(docList, emptyCommentLine)
-	}
-	docList = append(docList, ctx.genLinkname(name, sym))
-	fn.SetComments(pkg, &ast.CommentGroup{List: docList})
-}
 
 var goKeywords = map[string]bool{
     "package": true, "import": true, "var": true, "const": true, "func": true, "type": true,
@@ -167,10 +115,13 @@ var goKeywords = map[string]bool{
     "struct": true, "interface": true, "map": true,
 }
 
-func (ctx *context) genParams(pkg *gogen.Package, sig string) (*types.Tuple, bool) {
+func (ctx *context) genParams(pkg *gogen.Package, sig string, self, cls bool) (*types.Tuple, bool) {
 	args := pysig.Parse(sig)
 	if len(args) == 0 {
 		return nil, false
+	}
+	if self || cls {
+		args = args[1:]		// skip first argument
 	}
 	n := len(args)
 	objPtr := ctx.objPtr
@@ -178,34 +129,37 @@ func (ctx *context) genParams(pkg *gogen.Package, sig string) (*types.Tuple, boo
     listNum := 0
 	for i := 0; i < n; i++ {
 		name := strings.TrimSpace(args[i].Name)
+		if name == "/" || name == "" || name == "," {
+			continue
+		}
         // go keyword
         if goKeywords[name] {
             name = name + "_"
         }
-		if name[0] == '(' {				// (a1, a2, ...) -> list_0
+		if name[0] == '(' {
+			// (a1, a2, ...) -> list_0
 			name = "list_" + strconv.Itoa(listNum)
 			listNum++
 		}
-		if name == "/" || name == "" || name == "," {
-			continue
-		}
 		if name == "*" || name == "\\*" {
+			// TODO: support kwargs
 			break
 		}
 		if strings.HasPrefix(name, "*") {
 			if name[1] != '*' {
-				list = append(list, vArgs)
-				return types.NewTuple(list...), true		// *args
+				list = append(list, vArgs)  // *args
+				return types.NewTuple(list...), true
 			}
-			return types.NewTuple(list...), false		// **kwargs
+			// TODO: support **kwargs
+			return types.NewTuple(list...), false
 		}
-		list = append(list, pkg.NewParam(0, genName(name, 0), objPtr))
+		list = append(list, pkg.NewParam(0, ctx.genName(name, 0), objPtr))
 	}
 	return types.NewTuple(list...), false
 }
 
 // python name to go name
-func genName(name string, idxDontTitle int) string {
+func (ctx *context) genName(name string, idxDontTitle int) string {
 	lastIdx := len(name) - 1
 	for lastIdx >= 0 && name[lastIdx] == '_' {
 		lastIdx--
@@ -229,13 +183,10 @@ func genName(name string, idxDontTitle int) string {
 	return name
 }
 
-func (ctx *context) genLinkname(name string, sym *symbol) *ast.Comment {
-	return &ast.Comment{Text: "//go:linkname " + name + " py." + sym.Name}
-}
 
 // Generate documentation comments from the symbol's doc string
 func (ctx *context) genDoc(doc string) []*ast.Comment {
-	if doc == "" {
+	if doc == "" || doc == "None" {
 		return make([]*ast.Comment, 0, 4)
 	}
 	lines := strings.Split(doc, "\n")
