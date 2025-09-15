@@ -63,6 +63,9 @@ func main() {
 	// tidy go module
 	goModTidy(args.OutputDir)
 
+	// tidy go code
+	goCodeTidy(args.OutputDir)
+
 	fmt.Printf("LLGo bindings generated successfully in %s\n", args.OutputDir)
 }
 
