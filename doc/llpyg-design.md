@@ -1,76 +1,100 @@
-## 基本介绍
+## Introduction
 
-**[LLGo](https://github.com/goplus/llgo)**：一个基于 LLVM 的 Go 编译器，以便更好地与 C 和 Python 生态集成。
+**[LLGo](https://github.com/goplus/llgo)**: A Go compiler based on LLVM, designed to better integrate with C and Python ecosystems.
 
-**LLGo Bindings**：为了能够在 Go 代码中调用其他语言，需要将其他语言的符号映射为 Go 符号，形成接口，LLGo 通过该接口来实现对其他语言的调用。我们将这种一一映射的接口称为 LLGo Bindings，即 LLGo 对其他语言的绑定代码。
+**LLGo Bindings**: To enable Go code to call other languages, we need to map symbols from other languages to Go symbols, forming interfaces through which LLGo can invoke other languages. We call this one-to-one mapping interface LLGo Bindings, which represents the binding code for LLGo to other languages.
 
-以 Python 的 `numpy.add` 函数为例：
+Taking Python's `numpy.add` function as an example:
 ```Python
 numpy.add(x1, x2, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj])
 ```
 
-对应的 LLGo Bindings 为：
+The corresponding LLGo Bindings would be:
 ```Go
 //go:linkname Add py.add
 func Add(x1 *py.Object, x2 *py.Object) *py.Object
 ```
 
-**[llpyg](https://github.com/goplus/llpyg)**：一个面向 Python 库的 LLGo Bindings 自动生成工具。
+**[llpyg](https://github.com/goplus/llpyg)**: An automatic LLGo Bindings generation tool for Python packages.
 
-## 设计决策
+## Product Design
 
-### llpyg 是否需要脱离 LLGo ?
-> https://github.com/goplus/llpyg/issues/5
+### Target Users
 
-llpyg 面向的是那些需要 LLGo Bindings 的用户，即 LLGo 开发者，因此可以依赖于 LLGo。
+llpyg targets users who need LLGo Bindings, specifically **LLGo developers**.
 
-llpyg 依赖于 LLGo 的 Python 生态集成能力，该工具的一些子组件如 `pydump` 和 `pymodule` 需要 LLGo 进行编译和安装。
+Based on this, llpyg can depend on LLGo, leveraging LLGo's Python ecosystem integration capabilities to conveniently extract symbol information from Python libraries. See details in [#5](https://github.com/goplus/llpyg/issues/5).
 
-### llpyg 是否需要为用户提供与系统无关的 Python 环境？
+### Python Environment
 
-> https://github.com/goplus/llpyg/issues/2#issuecomment-3200109475
+llpyg uses the system Python or user-specified Python by default, and does not provide Python installation or automatic third-party library download services. See details in [#2](https://github.com/goplus/llpyg/issues/2#issuecomment-3200109475).
 
-llpyg 默认使用系统 Python 或用户指定的 Python，并不为用户提供 Python 安装及第三方库自动下载的服务。
+Users can specify the Python path through the `PYTHONHOME` environment variable. llpyg will not provide a separate environment variable. See details in [#9](https://github.com/goplus/llpyg/issues/9).
 
-### 要转换的 Python 库的版本是否可以指定？
+```bash
+export PYTHONHOME=/path/to/python
+```
 
-> https://github.com/goplus/llpyg/issues/8
+llpyg uses the versions of Python libraries already installed by the user. If users want to convert different versions of Python libraries, they need to manually change the installed library versions or specify the location of the corresponding version library through the `PYTHONPATH` environment variable. See details in [#8](https://github.com/goplus/llpyg/issues/8).
 
-llpyg 使用的是用户已经安装好的 Python 库的版本。用户若想转换不同版本的 Python 库，需要手动更改已安装的库。
+```bash
+export PYTHONPATH=/path/to/package
+```
 
-### llpyg 是否需要为用户提供指定 Python 路径的功能？
+### Implemented Features
 
-> https://github.com/goplus/llpyg/issues/9
+The main functionality implemented by llpyg is converting Python libraries to LLGo Bindings code. The converted symbol information includes constants, functions, classes, and methods.
 
-用户可以通过 `PYTHONHOME` 环境变量来指定 Python 路径。 llpyg 并不会提供一个单独的环境变量。
+For constants, the unified type is `*py.Object`.
+```go
+//go:linkname Pi py.pi
+var Pi *py.Object
+```
 
-## 架构设计
+For functions, the unified return type is `*py.Object`.
+```go
+//go:linkname Add py.add
+func Add(x1 *py.Object, x2 *py.Object) *py.Object
+```
 
-### 输入输出
+For classes and methods, they are converted to Go structs and methods. See details in [#14](https://github.com/goplus/llpyg/issues/14)
+```go
+type Animal struct {
+	py.Object
+}
 
-- 输入: Python 库名称
-- 输出: LLGo Bindings 代码
+//llgo:link (*Animal).Speak py.Animal.speak
+func (a *Animal) Speak() *py.Object { return nil }
+```
 
-**命令输入执行**
+## Architecture Design
+
+### Input and Output
+
+llpyg takes Python library names as input, which can be standard libraries or third-party libraries. The output is LLGo Bindings code organized as Go modules.
+
+Two forms of input are supported:
+1. Command line parameters
+2. Configuration files
+
+**Command line parameter input**:
 ```bash
 llpyg [-o output_dir] [-mod mod_name] [-d module_depth] py_lib_name
 ```
-参数说明：
-- `-o`: 输出目录，默认值为 `./test`
-- `-mod`: 生成 Go 模块名称，默认值为 Python 库名称
-- `-d`: 获取 Python 库的模块的最大深度，默认值为 1
-- `py_lib_name`: Python 库名称
 
-**配置文件输入执行**
+**Configuration file input**:
 ```bash
 llpyg [-o output_dir] [-mod mod_name] llpyg.cfg
 ```
-参数说明：
-- `-o`: 输出目录，默认值为 `./test`
-- `-mod`: 生成 Go 模块名称，默认值为空
-- `llpyg.cfg`: 配置文件路径
 
-配置文件示例：
+Parameter description:
+- `-o`: Output directory, default value is `./test`
+- `-mod`: Generated Go module name, default value is the Python library name
+- `-d`: Maximum module depth to retrieve for Python libraries, default value is 1
+- `py_lib_name`: Python library name
+- `llpyg.cfg`: Configuration file path
+
+Configuration file example:
 ```json
 {
   "name": "numpy",
@@ -81,18 +105,18 @@ llpyg [-o output_dir] [-mod mod_name] llpyg.cfg
 }
 ```
 
-**程序输出**
+**Program output**:
 ```text
 numpy
-├── numpy.go    // 主模块 LLGo Bindings 文件
+├── numpy.go    // Main module LLGo Bindings file
 ├── random
-│   └── random.go    // 子模块 LLGo Bindings 文件
+│   └── random.go    // Submodule LLGo Bindings file
 ├── go.mod
 ├── go.sum
-└── llpyg.cfg    // 配置文件
+└── llpyg.cfg    // Configuration file
 ```
 
-### 项目结构
+### Project Structure
 ```text
 llpyg
 ├── _xtool
@@ -112,98 +136,132 @@ llpyg
 └── LICENSE
 ```
 
-- `_xtool`: 需要使用 LLGo 进行编译和安装的子组件
-- `cmd`: llpyg 可执行文件
-- `tool`: 子模块，不依赖 LLGo
-- `doc`: 存放项目文档
+- `_xtool`: Sub-components that need to be compiled and installed using LLGo
+- `cmd`: llpyg executable file
+- `tool`: Sub-components that do not depend on LLGo
+- `doc`: Project documentation
 
+### Module Division
 
-### 模块划分
+This project includes the following modules:
+- **llpyg**: Project entry program, responsible for parsing input parameters and calling other modules
+- **pymodule**: Gets multi-level module names of Python libraries, used for generating configuration files
+- **pydump**: Gets symbol information from Python libraries, including constants, functions, classes, and methods
+- **pyenv**: Sets Python dynamic library paths and performs environment checks
+- **pysig**: Parses function and method signatures
+- **pygen**: Generates LLGo Bindings code using gogen based on symbol information
 
-```text
-_xtool
-├── pydump
-└── pymodule
-```
-该目录下的 LLGo 程序安装后会放在 `$GOPATH/bin` 目录下。
-- `pymodule`: 获取 Python 库的主模块及多级子模块名称
-- `pydump`: 获取 Python 库的符号信息，包括函数、类等信息
-
-```text
-cmd
-└── llpyg
-```
-- `llpyg`: llpyg 入口程序
-
-```text
-tool
-├── pyenv
-├── pygen
-└── pysig
+The calling relationships between modules are shown in the diagram:
+```mermaid
+graph TD
+    A[llpyg] --> B[pyenv]
+    A --> C[pymodule]
+    A --> D[pygen]
+    
+    D --> E[pydump]
+    D --> F[pysig]
 ```
 
-- `pyenv`: 设置 Python 路径，对环境进行检查
-- `pysig`: 解析 Python 函数和方法签名
-- `pygen`: 调用 `pydump` 和 `pysig`，生成 Go 代码
+## Module Interfaces
 
-### 执行流程
+### pymodule
+> /_xtool/pymodule/pymodule.go
 
-llpyg 执行流程：
+This module is responsible for parsing multi-level module names of Python libraries and third-party library version numbers, with results used to generate llpyg.cfg configuration files.
 
-1. 执行 `pyenv`，设置 Python 路径，对环境进行检查
-2. 执行 `pymodule`，获取模块名，生成 llpyg.cfg 配置文件
-3. 根据 `llpyg.cfg` 配置文件，逐模块执行 `pygen`，生成 Go 代码
-
-Go 代码生成流程：
-
-1. 执行 `pydump`，获取 Python 库的符号信息
-2. 执行 `pysig`，解析 Python 函数和方法签名
-3. 调用 `gogen`，生成 Go 代码
-
-
-### 模块接口
-**`pymodule` 模块接口**：
+Interface input:
 ```bash
-pymodule [-d <depth>] <libraryName>
+pymodule [-d <depth>] <py_lib>
 ```
-参数说明：
-- `-d <depth>`: 获取模块的深度，默认值为 1
-- `<libraryName>`: Python 库名称
 
-返回值（以 `numpy` 库为例）：
-```json
-{
-  "libName": "numpy",
-  "libVersion": "1.26.0",
-  "depth": 2,
-  "modules": [
-    "numpy",
-    "numpy.array_api",
-    "numpy.random",
-  ]
+Parameter description:
+- `-d`: Maximum module depth to retrieve for Python libraries, default value is 1
+- `<py_lib>`: Python library name
+
+Return value:
+```go
+type library struct {
+	LibName 	string 		`json:"libName"`
+	LibVersion  string 		`json:"libVersion"`
+	Depth 		int  		`json:"depth"`
+	Modules 	[]string 	`json:"modules"`
 }
 ```
 
-**`pydump` 模块接口：**
+### pydump
+> /_xtool/pydump/pydump.go
+
+This module is responsible for getting symbol information from Python libraries. The Python objects obtained include constants, functions, classes, and methods. For each Python object, the information obtained includes name, type, documentation, and signature.
+
+Interface input:
 ```bash
 pydump <moduleName>
 ```
-参数说明：
-- `<moduleName>`: Python 模块名称
 
-返回值：
-```json
-{
-  "name": "numpy",
-  "items": [
-    {
-      "name": "__name__",
-      "type": "str",
-      "doc": "...",
-      "sig": ""
-    },
-  ]
+Parameter description:
+- `<moduleName>`: Python module name to parse
+
+Return value:
+```go
+type symbol struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+	Doc  string `json:"doc"`
+	Sig  string `json:"sig"`
+}
+
+type module struct {
+	Name  string    `json:"name"`
+	Items []*symbol `json:"items"`
 }
 ```
 
+### pysig
+> /tool/pysig/parse.go
+
+This module is responsible for parsing signature strings and returning parameter information.
+
+Interface function:
+```go
+func Parse(sig string) (args []*Arg)
+```
+
+Return value is a parameter list:
+```go
+type Arg struct {
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	DefVal   string `json:"defVal"`
+	Optional bool   `json:"optional"`
+}
+```
+
+### pygen
+> /tool/pygen/pygen.go
+
+This module is responsible for calling pydump and pysig, and generating LLGo Bindings code based on symbol information.
+
+Interface function:
+```go
+func GenLLGoBindings(moduleName string, outFile io.Writer)
+```
+
+Parameter description:
+- `moduleName`: Python module name
+- `outFile`: Output file for writing LLGo Bindings code
+
+Output example:
+```go
+package animals
+
+import (
+	"github.com/goplus/lib/py"
+	_ "unsafe"
+)
+
+const LLGoPackage = "py.animals"
+
+//go:linkname Speak py.speak
+func Speak(msg *py.Object) *py.Object
+```
 
