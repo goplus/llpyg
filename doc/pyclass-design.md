@@ -1,18 +1,17 @@
-# Problem Description
+# 问题描述
 
-Currently, LLGo only supports calling Python functions and does not support handling classes and objects. The official repository (https://github.com/goplus/lib/py) also lacks LLGo Bindings code examples related to Python classes.
+目前，LLGo 仅支持调用 Python 函数，不支持处理类和对象。官方仓库 [goplus/lib/py](https://github.com/goplus/lib/py) 也缺少与 Python 类相关的 LLGo Bindings 代码示例。
 
-To expand LLGo's integration capabilities with the Python ecosystem, support for Python classes needs to be added. On one hand, llpyg needs to generate corresponding LLGo Bindings code, and on the other hand, LLGo needs to add corresponding processing logic.
+为了扩展 LLGo 与 Python 生态系统的集成能力，需要添加对 Python 类的支持。一方面，llpyg 需要生成相应的 LLGo Bindings 代码，另一方面，LLGo 需要添加相应的处理逻辑。
 
-## Symbol Information
+## 符号信息
 
-Python class declarations contain the following symbol information:
-- Name and inheritance relationships
-- Methods (including class methods, instance methods, static methods)
-- Properties (including class properties, instance properties)
-- Special methods (methods starting and ending with `__`)
+Python 类声明包含以下符号信息：
+- 名称和继承关系
+- 方法（包括类方法、实例方法、静态方法和特殊方法）
+- 属性（包括类属性、实例属性）
 
-Python class example:
+Python 类示例：
 ```Python
 class Animal:
     def __init__(self, name):
@@ -45,94 +44,181 @@ class Dog(Animal):
         return cls.dog_name
     
     @staticmethod
-    def get_dog_name_static():
+    def get_name():
         return "Dog"
     
     def __str__(self):
         return f"Dog {self._name} is {self._age} years old"
 ```
 
-Usage example:
+使用示例：
 ```Python
 dog = Dog("Buddy", 3)
 dog.speak()
 age = dog.age
 dog.age = 4
-dog.get_dog_name()
-dog.get_dog_name_static()
+Dog.dog_name = "Dog1"
+print(Dog.dog_name)   # Dog1
+Dog.get_dog_name()
+Dog.get_name()
 print(dog)
 ```
 
-## LLGo Bindings Design
+## LLGo Bindings 设计
 
-A good approach is to convert Python classes to Go structs and convert all symbols declared in the class to struct methods.
+### 类和实例
+将 Python 类转换为 Go 结构体，通过嵌入实现继承。对于类实例，通过 NewClassName 函数创建。
 
-### Classes and Instances
-**For classes**, convert to structs. Single inheritance is implemented through embedding. For class instances, create through NewClassName functions and link to Python class symbols through `go:linkname`:
+> NewClassName 函数的参数从类的 `__init__` 或 `__new__` 方法获得。
 
-> The parameters of the NewClassName function are obtained from the `__init__` method.
+Python 类：
+```Python
+class Dog(Animal):
+    def __init__(self, name, age):
+        super().__init__(name)
+        self._age = age
 
-```Go
-type Animal struct {
-	py.Object
-}
-
-//go:linkname NewAnimal py.Animal
-func NewAnimal(name *py.Object) *Animal
+dog = Dog("Buddy", 3)
 ```
 
-### Methods
-**For methods**, convert class methods, static methods, instance methods, and special methods to struct methods uniformly, using `llgo:link` directives to link method symbols:
+Go 结构体：
 
 ```Go
-//llgo:link (*Animal).Speak py.Animal.speak
-func (a *Animal) Speak(name *py.Object) *py.Object {
+type Dog struct {
+	Animal
+}
+
+//go:linkname NewDog py.Dog
+func NewDog(name *py.Object, age *py.Object) *Dog
+```
+
+LLGo 使用方式：
+
+```Go
+dog := NewDog(py.Str("Buddy"), py.Long(3))
+```
+
+### 方法
+Python 类中声明的方法包括类方法、实例方法、静态方法和特殊方法 （魔法方法）。
+
+```Python
+def speak(self):
+    pass
+
+@classmethod
+def get_dog_name(cls):
+    pass
+
+@staticmethod
+def get_name():
+    pass
+
+def __str__(self):
+    pass
+```
+```Python
+dog = Dog("Buddy", 3)
+dog.speak()
+Dog.get_dog_name()
+Dog.get_name()
+str(dog)
+```
+
+类方法、实例方法和特殊方法都与类或实例相关联，因此将它们转为 Go 结构体方法。
+
+> 对于特殊方法，去除前后下划线，使其更符合命名规范与使用习惯。
+
+```Go
+//llgo:link (*Dog).Speak py.Dog.speak
+func (d *Dog) Speak() *py.Object {
     return nil
 }
 
-//llgo:link (*Animal).Str py.Animal.__str__
-func (a *Animal) Str() *py.Object {
+//llgo:link (*Dog).GetDogName py.Dog.get_dog_name
+func (d *Dog) GetDogName() *py.Object {
+    return nil
+}
+
+//llgo:link (*Dog).Str py.Dog.__str__
+func (d *Dog) Str() *py.Object {
     return nil
 }
 ```
 
-### Properties
-**For properties**, split them into Get and Set methods:
-- Methods for getting property values do not need a Get prefix
-- Methods for setting property values need a Set prefix and have no return value
+对于静态方法，与类和实例无关，因此将它们转为 Go 函数。为了防止命名冲突以及更符合使用习惯，添加 ClassName 前缀。
 
 ```Go
-//llgo:link (*Animal).Age py.Animal.age.__get__
-func (a *Animal) Age() *py.Object {
+//go:linkname DogGetName py.Dog.get_name
+func DogGetName() *py.Object {
+    return nil
+}
+```
+
+LLGo 使用方式：
+
+```Go
+dog := NewDog(py.Str("Buddy"), py.Long(3))
+dog.Speak()
+dog.GetDogName()
+dog.Str()
+DogGetName()
+```
+
+### 属性
+Python 类中声明的属性包括类属性和实例属性。
+```Python
+class Dog(Animal):
+    dog_name = "Dog"
+
+    @property
+    def age(self):
+        return self._age
+
+    @age.setter
+    def age(self, age):
+        self._age = age
+```
+```Python
+dog = Dog("Buddy", 3)
+dog.age
+dog.age = 4
+Dog.dog_name
+```
+
+在 Python 中可以对属性执行获取和设置操作，因此将每个属性拆分为 `get` 和 `set` 方法。
+
+> 对于属性的获取操作，为了符合使用习惯，不添加 Get 前缀。
+
+```Go
+//llgo:link (*Dog).Age py.Dog.age.__get__
+func (d *Dog) Age() *py.Object {
     return nil
 }
 
-//llgo:link (*Animal).SetAge py.Animal.age.__set__
-func (a *Animal) SetAge(age *py.Object) {
+//llgo:link (*Dog).SetAge py.Dog.age.__set__
+func (d *Dog) SetAge(age *py.Object) {
 }
 ```
 
-### Usage
-Corresponding usage:
+LLGo 使用方式：
+
 ```Go
-animal := NewAnimal(py.Str("Animal"))
-animal.Speak(py.Str("msg"))
-str := animal.Str()
-age := animal.Age()
-animal.SetAge(py.Long(10))
+dog := NewDog(py.Str("Buddy"), py.Long(3))
+dog.Age()
+dog.SetAge(py.Long(4))
 ```
 
-## Existing Problems
+## 现有问题
 
-### Multiple Inheritance
-In Python, a class can inherit from multiple parent classes:
+### 多重继承
+在 Python 中，一个类可以继承多个父类：
 
 ```Python
 class Child(Parent1, Parent2):
     pass
 ```
 
-In Go, multiple inheritance is implemented by embedding multiple structs in a struct:
+在 Go 中，多重继承通过在结构体中嵌入多个结构体来实现：
 
 ```Go
 type Child struct {
@@ -141,30 +227,36 @@ type Child struct {
 }
 ```
 
-However, embedding multiple structs has **memory layout problems**:
+然而，嵌入多个结构体存在**内存布局问题**：
 
-In Python, all objects have the same basic structure, and properties from multiple inheritance are merged. But in Go, structs implement inheritance through embedded fields, which results in continuous memory layout. Due to the different memory layouts, objects returned by CPython cannot be directly converted to structs that embed multiple `py.Object` fields.
+在 Python 中，所有对象都有相同的基本结构，多重继承的属性会被合并。但在 Go 中，结构体通过嵌入字段实现继承，这导致连续的内存布局。由于内存布局不同，CPython 返回的对象无法直接转换为嵌入多个 `py.Object` 字段的结构体。
 
-### Initialization Methods
+### 类属性
 
-For pure Python classes, instances are created and initialized by calling the `__init__` method. Therefore, the `__init__` method can be converted to a NewClassName function to implement Python class creation. The linked symbol at this time is `py.ClassName`.
+在 Python 中，类属性属于类，而不是实例。通过实例修改类属性，实际上是创建了一个同名的实例属性，并不会影响类和其他实例：
 
-```Go
-//go:linkname NewAnimal py.Animal
-func NewAnimal(name *py.Object) *Animal
+```Python
+class Dog:
+    dog_name = "dog"
 
-//go:linkname NewAnimal py.Animal.__init__
-func NewAnimal(name *py.Object) *Animal
+    def __init__(self, name):
+        self.name = name
+
+dog1 = Dog("Buddy")
+dog2 = Dog("Max")
+
+dog1.dog_name = "dog1"
+print(dog1.dog_name)   # dog1
+print(dog2.dog_name)   # dog
+print(Dog.dog_name)    # dog
 ```
 
-However, when testing the numpy library, it was found that C-implemented extension types (such as `numpy.ndarray`) do not have an `__init__` method, but create instances through the `__new__` method. In this scenario, does the linked symbol need to be changed?
-
-```Go
-//go:linkname NewNdarray py.Ndarray
-func NewNdarray(shape *py.Object) *Ndarray
+但通过类名修改类属性，会影响到不存在同名实例属性的所有实例，包括未创建的实例：
+```Python
+Dog.dog_name = "Dog"
+print(Dog.dog_name)     # Dog
+print(dog2.dog_name)    # Dog   
 ```
 
-```Go
-//go:linkname NewNdarray py.Ndarray.__new__
-func NewNdarray(shape *py.Object) *Ndarray
-```
+Python 支持通过类名修改类属性，那么在 Go 这边如何实现？
+
