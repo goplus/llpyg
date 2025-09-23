@@ -235,7 +235,7 @@ func (ctx *context) genLinkname(name string, sym *symbol) *ast.Comment {
 
 // Generate documentation comments from the symbol's doc string
 func (ctx *context) genDoc(doc string) []*ast.Comment {
-	if doc == "" {
+	if doc == "" || doc == "None" {
 		return make([]*ast.Comment, 0, 4)
 	}
 	lines := strings.Split(doc, "\n")
