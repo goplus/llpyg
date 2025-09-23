@@ -107,7 +107,7 @@ func pydump(moduleName string) (*module, error) {
 		sym.Type = c.GoString(val.Type().TypeName().CStr())
 		// doc
 		doc := val.GetAttrString(c.Str("__doc__"))
-		if doc != nil {
+		if doc != nil && doc.IsTrue() == 1 {
 			sym.Doc = c.GoString(doc.Str().CStr())
 		}
 		// signature
