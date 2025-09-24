@@ -94,7 +94,7 @@ type Dog struct {
 
 对于类实例，通过声明构造函数 `New[ClassName]` 进行创建。构造函数通过 `go:linkname` 链接到符号 `py.[ClassName]`。
 
-> New[ClassName] 函数的参数从类的 `__init__` 或 `__new__` 方法获得。
+> 根据 LLGo 的实现逻辑，New[ClassName] 函数的参数应从类的 `__init__` 方法获得。一些类可能没有 `__init__` 方法，但存在 `__new__` 方法，则从 `__new__` 方法获得。若两个方法都不存在，则不声明该类的构造函数。
 
 Python 代码实例：
 ```Python
