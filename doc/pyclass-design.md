@@ -67,9 +67,9 @@ print(dog)
 ## LLGo Bindings 设计
 
 ### 类和实例
-将 Python 类转换为 Go 结构体，通过嵌入实现类似继承的功能。对于类实例，通过声明的 `New[ClassName]` 构造函数进行创建。
+将 Python 类转换为 Go 结构体，通过嵌入实现类似继承的功能。对于类实例，通过声明的 `New[ClassName]` 构造函数进行创建。对应的构造函数通过 `go:linkname` 链接到符号 `py.[ClassName]`。
 
-> NewClassName 函数的参数从类的 `__init__` 或 `__new__` 方法获得。
+> New[ClassName] 函数的参数从类的 `__init__` 或 `__new__` 方法获得。
 
 Python 类：
 ```Python
@@ -124,7 +124,7 @@ Dog.get_name()
 str(dog)
 ```
 
-类方法、实例方法和特殊方法都与类或实例相关联，因此将它们转为 Go 结构体方法。
+类方法、实例方法和特殊方法都与类或实例相关联，因此将它们转为 Go 结构体方法。方法通过 `llgo:link` 链接到符号 `py.[ClassName].[methodName]`。
 
 > 对于特殊方法，去除前后下划线，使其更符合命名规范与用户使用习惯。
 
@@ -145,7 +145,7 @@ func (d *Dog) Str() *py.Object {
 }
 ```
 
-对于静态方法，与类和实例无关，因此将它们转为 Go 函数。为了防止命名冲突以及更符合用户使用习惯，添加类名作为函数名的前缀。
+对于静态方法，与类和实例无关，因此将它们转为 Go 函数。为了防止命名冲突以及更符合用户使用习惯，添加类名作为函数名的前缀。函数通过 `go:linkname` 链接到符号 `py.[ClassName].[methodName]`。
 
 ```Go
 //go:linkname DogGetName py.Dog.get_name
@@ -186,6 +186,9 @@ Dog.dog_name
 ```
 
 在 Python 中可以对属性执行获取和设置操作，因此将每个属性拆分为 `get` 和 `set` 方法。
+
+- `get` 方法链接到符号 `py.[ClassName].[attributeName].__get__`
+- `set` 方法链接到符号 `py.[ClassName].[attributeName].__set__`
 
 > 对于属性的获取操作，为了符合用户使用习惯，不添加 Get 前缀。
 
