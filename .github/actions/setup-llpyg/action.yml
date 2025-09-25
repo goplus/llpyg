@@ -4,6 +4,9 @@ inputs:
   go:
     description: "Go version to install"
     default: "1.23"
+  llvm:
+    description: "LLVM version to install (e.g. 18)"
+    default: "19"
   llgo:
     description: "LLGo git ref or tag"
     default: "e4218f90d7926d31c1ffae3965a4e36228d38fd2"
@@ -25,15 +28,12 @@ runs:
       if: runner.os == 'macOS'
       shell: bash
       run: |
-        brew install bdw-gc openssl libffi libuv
+        brew install llvm@${{inputs.llvm}} bdw-gc openssl libffi libuv lld@${{inputs.llvm}}
+        brew install zlib # for llgo test .
+        brew link --force zlib # for llgo test .
         brew link --force libffi
-
-    - name: Install dependencies
-      shell: bash
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y pkg-config libgc-dev libssl-dev zlib1g-dev libffi-dev libuv1-dev
+        echo "$(brew --prefix llvm@${{inputs.llvm}})/bin" >> $GITHUB_PATH
+        echo "$(brew --prefix lld@${{inputs.llvm}})/bin" >> $GITHUB_PATH
 
     - name: Install LLGo
       shell: bash
