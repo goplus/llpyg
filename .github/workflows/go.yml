@@ -16,7 +16,7 @@ jobs:
         os:
           - macos-latest
         llgo: [e4218f90d7926d31c1ffae3965a4e36228d38fd2]
-        go: [1.23]
+        go: [1.24]
       fail-fast: false
     runs-on: ${{matrix.os}}
     steps:
