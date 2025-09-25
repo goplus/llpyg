@@ -21,30 +21,11 @@ jobs:
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v5
-      - name: Setup llcppg environment
+      - name: Setup llpyg environment
         uses: ./.github/actions/setup-llpyg
         with:
           go: ${{ matrix.go }}
           llgo: ${{ matrix.llgo }}
-
-      - name: Setup Test Dependencies
-        if: startsWith(matrix.os, 'macos')
-        run: brew install cjson
-
-      - name: Setup Test Dependencies
-        if: startsWith(matrix.os, 'ubuntu')
-        run: sudo apt install libcjson-dev
-
-      # only can compile with llgo
-      - name: Test xtool
-        run: |
-          llgo test ./_xtool/internal/...
-
-      # only can compile with llgo
-      - name: Test llcppsymg & llcppsigfetch
-        run: |
-          llgo test ./_xtool/llcppsigfetch/internal/...
-          llgo test ./_xtool/llcppsymg/internal/...
 
       - name: Test
         if: ${{!startsWith(matrix.os, 'macos')}}
