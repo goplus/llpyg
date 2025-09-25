@@ -1,0 +1,55 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os:
+          - macos-latest
+        llgo: [e4218f90d7926d31c1ffae3965a4e36228d38fd2]
+        go: [1.23]
+      fail-fast: false
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup llcppg environment
+        uses: ./.github/actions/setup-llpyg
+        with:
+          go: ${{ matrix.go }}
+          llgo: ${{ matrix.llgo }}
+
+      - name: Setup Test Dependencies
+        if: startsWith(matrix.os, 'macos')
+        run: brew install cjson
+
+      - name: Setup Test Dependencies
+        if: startsWith(matrix.os, 'ubuntu')
+        run: sudo apt install libcjson-dev
+
+      # only can compile with llgo
+      - name: Test xtool
+        run: |
+          llgo test ./_xtool/internal/...
+
+      # only can compile with llgo
+      - name: Test llcppsymg & llcppsigfetch
+        run: |
+          llgo test ./_xtool/llcppsigfetch/internal/...
+          llgo test ./_xtool/llcppsymg/internal/...
+
+      - name: Test
+        if: ${{!startsWith(matrix.os, 'macos')}}
+        run: go test -v ./...
+
+      - name: Test with coverage
+        if: startsWith(matrix.os, 'macos')
+        run: go test -v -coverprofile="coverage.txt" -covermode=atomic ./...

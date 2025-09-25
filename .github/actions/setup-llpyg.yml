@@ -1,0 +1,54 @@
+name: "Setup llcppg"
+description: "Install dependencies, set up Go, set up LLGo, install llcppg"
+inputs:
+  go:
+    description: "Go version to install"
+    default: "1.23"
+  llgo:
+    description: "LLGo git ref or tag"
+    default: "8959c83397617dacb18a8de54c3a738303b66141"
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+    - name: Checkout LLGo
+      uses: actions/checkout@v4
+      with:
+        repository: "goplus/llgo"
+        path: ".llgo"
+        ref: ${{inputs.llgo}}
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{inputs.go}}
+    - name: Install dependencies
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        brew install bdw-gc openssl libffi libuv
+        brew link --force libffi
+
+    - name: Install dependencies
+      shell: bash
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y pkg-config libgc-dev libssl-dev zlib1g-dev libffi-dev libuv1-dev
+
+    - name: Install LLGo
+      shell: bash
+      working-directory: .llgo
+      run: |
+        go install -v ./cmd/llgo/...
+        export LLGO_ROOT=$GITHUB_WORKSPACE/.llgo
+        echo "LLGO_ROOT=$LLGO_ROOT" >> $GITHUB_ENV
+
+    - name: Build
+      shell: bash
+      run: go build -v ./...
+
+    - name: Install llpyg modules
+      shell: bash
+      run: |
+        echo "Using LLGO_ROOT: $LLGO_ROOT"
+        bash ./install.sh
