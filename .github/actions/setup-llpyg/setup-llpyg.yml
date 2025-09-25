@@ -1,4 +1,4 @@
-name: "Setup llcppg"
+name: "Setup llpyg"
 description: "Install dependencies, set up Go, set up LLGo, install llcppg"
 inputs:
   go:
