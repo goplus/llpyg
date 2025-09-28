@@ -20,7 +20,8 @@ type symbol struct {
 type module struct {
 	Name      string    `json:"name"`      // python module name
 	Functions []*symbol `json:"functions"` // package functions
-	// TODO: variables, classes, etc.
+	Variables []*symbol `json:"variables"` // package variables
+	// TODO: classes, etc.
 }
 
 var pyFuncTypes = map[string]bool{
@@ -30,6 +31,19 @@ var pyFuncTypes = map[string]bool{
 	"method-wrapper":             true,
 	"builtin_function_or_method": true,
 	"_ArrayFunctionDispatcher":   true,
+}
+
+var pyVarTypes = map[string]struct{}{
+	"int":      {},
+	"float":    {},
+	"complex":  {},
+	"bool":     {},
+	"str":      {},
+	"list":     {},
+	"tuple":    {},
+	"set":      {},
+	"dict":     {},
+	"NoneType": {},
 }
 
 func extractSignatureFromDoc(doc, funcName string) string {
@@ -110,8 +124,14 @@ func pydump(moduleName string) (*module, error) {
 		if pyFuncTypes[sym.Type] {
 			sym.Sig = getSignature(val, sym)
 			modInstance.Functions = append(modInstance.Functions, sym)
+			continue
 		}
-		// TODO: variables, classes, etc.
+		// variables
+		if _, ok := pyVarTypes[sym.Type]; ok {
+			modInstance.Variables = append(modInstance.Variables, sym)
+			continue
+		}
+		// TODO: classes, etc.
 	}
 	return modInstance, nil
 }
