@@ -10,5 +10,6 @@ type Symbol struct {
 type Module struct {
 	Name      string    `json:"name"`      // python module name
 	Functions []*Symbol `json:"functions"` // package functions
-	// TODO: variables, classes, etc.
+	Variables []*Symbol `json:"variables"` // package variables
+	// TODO: classes, etc.
 }

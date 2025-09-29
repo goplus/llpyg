@@ -20,6 +20,19 @@ var pyFuncTypes = map[string]bool{
 	"_ArrayFunctionDispatcher":   true,
 }
 
+var pyVarTypes = map[string]struct{}{
+	"int":      {},
+	"float":    {},
+	"complex":  {},
+	"bool":     {},
+	"str":      {},
+	"list":     {},
+	"tuple":    {},
+	"set":      {},
+	"dict":     {},
+	"NoneType": {},
+}
+
 func extractSignatureFromDoc(doc, funcName string) string {
 	lines := strings.SplitN(doc, "\n\n", 2)
 	if len(lines) == 0 {
@@ -98,8 +111,14 @@ func pydump(moduleName string) (*symbol.Module, error) {
 		if pyFuncTypes[sym.Type] {
 			sym.Sig = getSignature(val, sym)
 			modInstance.Functions = append(modInstance.Functions, sym)
+			continue
 		}
-		// TODO: variables, classes, etc.
+		// variables
+		if _, ok := pyVarTypes[sym.Type]; ok {
+			modInstance.Variables = append(modInstance.Variables, sym)
+			continue
+		}
+		// TODO: classes, etc.
 	}
 	return modInstance, nil
 }
