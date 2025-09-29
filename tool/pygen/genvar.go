@@ -26,10 +26,6 @@ func (ctx *context) genVars(pkg *gogen.Package, syms []*symbol) {
 }
 
 func (ctx *context) genVar(pkg *gogen.Package, sym *symbol, goName string) {
-	name := sym.Name
-	if len(name) == 0 || name[0] == '_' {
-		return
-	}
 	def := pkg.NewVarDefs(pkg.Types.Scope())
 	// linkname
 	docList := make([]*ast.Comment, 0, 2)
