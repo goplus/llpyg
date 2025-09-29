@@ -106,3 +106,37 @@ func assertArgsEqual(t *testing.T, got, want Args) {
 		t.Errorf("unexpected Kwarg: got %q, want %q", got.Kwarg, want.Kwarg)
 	}
 }
+
+
+func TestGoModuleUtils(t *testing.T) {
+	tempDir := t.TempDir()
+	goFile := filepath.Join(tempDir, "test.go")
+	goContent := `package main
+
+	import (
+		"fmt"
+		"github.com/goplus/lib/py"
+	)
+
+	func main() {
+	a := py.Object{}
+	fmt.Printf("hello %v", a)
+	}
+	`
+	err := os.WriteFile(goFile, []byte(goContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test Go file: %v", err)
+	}
+	err = initGoModule("test", tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = goModTidy(tempDir)
+	if err != nil {
+		t.Log(err)
+	}
+	err = codeFormat(tempDir)
+	if err != nil {
+		t.Log(err)
+	}
+}

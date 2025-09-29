@@ -32,36 +32,43 @@ func writeConfig(cfg Config, outDir string) error {
 }
 
 func initGoModule(modName string, outDir string) error {
-	if err := os.Chdir(outDir); err != nil {
-		return fmt.Errorf("error: failed to change directory: %w", err)
-	}
 	// init go module
 	cmd := exec.Command("go", "mod", "init", modName)
+	cmd.Dir = outDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error: failed to initialize Go module: %w", err)
 	}
 
-	getCmd := exec.Command("go", "get", "github.com/goplus/lib/py")
-	getCmd.Stdout = os.Stdout
-	getCmd.Stderr = os.Stderr
-	if err := getCmd.Run(); err != nil {
+	cmd = exec.Command("go", "get", "github.com/goplus/lib/py")
+	cmd.Dir = outDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error: failed to get github.com/goplus/lib/py: %w", err)
 	}
 	return nil
 }
 
 func goModTidy(outDir string) error {
-	if err := os.Chdir(outDir); err != nil {
-		return fmt.Errorf("error: failed to change directory: %w", err)
-	}
-	tidyCmd := exec.Command("go", "mod", "tidy")
-	tidyCmd.Stdout = os.Stdout
-	tidyCmd.Stderr = os.Stderr
-	if err := tidyCmd.Run(); err != nil {
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = outDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error: failed to tidy Go module: %w", err)
 	}
 	return nil
 }
 
+func codeFormat(outDir string) error {
+	cmd := exec.Command("go", "fmt", "./...")
+	cmd.Dir = outDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error: failed to format Go code: %w", err)
+	}
+	return nil
+}
