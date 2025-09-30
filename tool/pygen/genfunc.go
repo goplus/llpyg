@@ -13,12 +13,12 @@ func (ctx *context) genFunc(pkg *gogen.Package, sym *symbol.Symbol) {
 	if len(name) == 0 || name[0] == '_' {
 		return
 	}
-	if symSig == "" { // no signature
+	if symSig.Str == "" { // no signature
 		ctx.skips = append(ctx.skips, *sym)
 		return
 	}
 	// signature
-	params, variadic := ctx.genParams(pkg, symSig)
+	params, variadic := ctx.genParams(pkg, symSig.Str)
 	goName := ctx.genName(name, -1)
 	sig := types.NewSignatureType(nil, nil, nil, params, ctx.ret, variadic) // ret: *py.Object
 	fn := pkg.NewFuncDecl(token.NoPos, goName, sig)

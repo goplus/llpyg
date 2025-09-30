@@ -1,10 +1,11 @@
 package main
 
 import (
-	"os"
-	"fmt"
-	"strings"
 	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
+
 	"github.com/goplus/lib/c"
 	"github.com/goplus/lib/py"
 	"github.com/goplus/lib/py/inspect"
@@ -38,55 +39,57 @@ func extractSignatureFromDoc(doc, funcName string) string {
 	return strings.Join(fields, " ")
 }
 
-func getSignature(val *py.Object, sym *symbol.Symbol) string {
-	// function, method, class, or implement __call__
+func getSignature(val *py.Object, sym *symbol.Symbol) (*symbol.Signature, error) {
+	// which implement __call__
 	if val.Callable() == 0 {
-		return ""
+		return nil, fmt.Errorf("not callable")
 	}
-	// get signature from inspect
+	// inspect
 	sigFromInspect := inspect.Signature(val)
 	if sigFromInspect != nil {
 		sig := c.GoString(sigFromInspect.Str().CStr())
-		if sig != "(*args, **kwargs)" {
-			return sig
-		}
+		return &symbol.Signature{
+			Source: symbol.SigSourceInspect,
+			Str:    sig,
+		}, nil
 	}
-	// get signature from doc
+	// doc
 	sigFromDoc := extractSignatureFromDoc(sym.Doc, sym.Name)
 	if sigFromDoc != "" {
-		return sigFromDoc
+		return &symbol.Signature{
+			Source: symbol.SigSourceDoc,
+			Str:    sigFromDoc,
+		}, nil
 	}
 	// Paradigms
 	if pyFuncTypes[sym.Type] {
-		return "(*args, **kwargs)"
+		return &symbol.Signature{
+			Source: symbol.SigSourceParadigm,
+			Str:    "(*args, **kwargs)",
+		}, nil
 	}
-	return ""
+	return nil, fmt.Errorf("failed to get signature")
 }
 
 // moduleName: Python module name
 func pydump(moduleName string) (*symbol.Module, error) {
-	// import module
 	mod := py.ImportModule(c.AllocaCStr(moduleName))
 	if mod == nil {
 		return nil, fmt.Errorf("failed to import module %s", moduleName)
 	}
-	// get dict, python list Object
 	keys := mod.ModuleGetDict().DictKeys()
 	if keys == nil {
 		return nil, fmt.Errorf("failed to get dict keys of %s", moduleName)
 	}
-	// create module instance
 	modInstance := &symbol.Module{
 		Name: moduleName,
 	}
-	// get symbols
 	for i, n := 0, keys.ListLen(); i < n; i++ {
 		key := keys.ListItem(i)
 		val := mod.GetAttr(key)
 		if val == nil {
 			continue
 		}
-		// define symbol
 		sym := &symbol.Symbol{}
 		sym.Name = c.GoString(key.CStr())
 		sym.Type = c.GoString(val.Type().TypeName().CStr())
@@ -96,7 +99,11 @@ func pydump(moduleName string) (*symbol.Module, error) {
 		}
 		// functions
 		if pyFuncTypes[sym.Type] {
-			sym.Sig = getSignature(val, sym)
+			sig, err := getSignature(val, sym)
+			if err != nil {
+				return nil, err
+			}
+			sym.Sig = *sig
 			modInstance.Functions = append(modInstance.Functions, sym)
 		}
 		// TODO: variables, classes, etc.
