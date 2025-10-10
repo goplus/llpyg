@@ -41,6 +41,21 @@ func TestGenFunc(t *testing.T) {
 	t.Logf("test gen func pass")
 }
 
+func TestGenVar(t *testing.T) {
+	prepareEnv("./testdata/var")
+	mod, err := pydump("demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := createGoPackage(mod)
+	ctx.genVars(ctx.pkg, mod.Variables)
+	err = compareWithExpected(t, ctx, "testdata/var/expect.go")
+	if err != nil {
+		t.Fatalf("test gen var failed: %v", err)
+	}
+	t.Logf("test gen var pass")
+}
+
 func compareWithExpected(t *testing.T, ctx *context, expectedPath string) error {
 	outFilePath := "./temp/actual_git.go"
 	dir := filepath.Dir(outFilePath)

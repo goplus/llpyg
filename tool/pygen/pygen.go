@@ -103,7 +103,9 @@ func (ctx *context) genMod(pkg *gogen.Package, mod *symbol.Module) {
 		funcMap[sym.Name] = true
 		ctx.genFunc(pkg, sym)
 	}
-	// TODO: class, variable, etc.
+	// variables
+	ctx.genVars(pkg, mod.Variables)
+	// TODO: class, etc.
 }
 
 
