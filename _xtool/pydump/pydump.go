@@ -38,29 +38,39 @@ func extractSignatureFromDoc(doc, funcName string) string {
 	return strings.Join(fields, " ")
 }
 
-func getSignature(val *py.Object, sym *symbol.Symbol) string {
-	// function, method, class, or implement __call__
+func getSignature(val *py.Object, sym *symbol.Symbol, skipFirst bool) (string, error) {
+	// which has __call__
 	if val.Callable() == 0 {
-		return ""
+		return "", fmt.Errorf("%s is not callable", sym.Name)
 	}
-	// get signature from inspect
-	sigFromInspect := inspect.Signature(val)
-	if sigFromInspect != nil {
-		sig := c.GoString(sigFromInspect.Str().CStr())
-		if sig != "(*args, **kwargs)" {
-			return sig
+	// use inspect
+	sigObj := inspect.Signature(val)
+	if sigObj != nil {
+		sig := c.GoString(sigObj.Str().CStr())
+		if skipFirst {
+			sig = removeFirstParam(sig)
 		}
+		return sig, nil
 	}
-	// get signature from doc
-	sigFromDoc := extractSignatureFromDoc(sym.Doc, sym.Name)
-	if sigFromDoc != "" {
-		return sigFromDoc
+	// parse doc
+	sig := extractSignatureFromDoc(sym.Doc, sym.Name)
+	if sig != "" {
+		return sig, nil
 	}
 	// Paradigms
 	if pyFuncTypes[sym.Type] {
-		return "(*args, **kwargs)"
+		return "(*args, **kwargs)", nil
 	}
-	return ""
+	return "", fmt.Errorf("failed to get signature of %s", sym.Name)
+}
+
+// (self, ...) -> (...)
+func removeFirstParam(sig string) string {
+	idx := strings.Index(sig, ",")
+	if idx == -1 {
+		return "()"
+	}
+	return "(" + strings.TrimSpace(sig[idx+1:])
 }
 
 // moduleName: Python module name
@@ -70,11 +80,8 @@ func pydump(moduleName string) (*symbol.Module, error) {
 	if mod == nil {
 		return nil, fmt.Errorf("failed to import module %s", moduleName)
 	}
-	// get dict, python list Object
+	// get object dict
 	keys := mod.ModuleGetDict().DictKeys()
-	if keys == nil {
-		return nil, fmt.Errorf("failed to get dict keys of %s", moduleName)
-	}
 	// create module instance
 	modInstance := &symbol.Module{
 		Name: moduleName,
@@ -96,10 +103,23 @@ func pydump(moduleName string) (*symbol.Module, error) {
 		}
 		// functions
 		if pyFuncTypes[sym.Type] {
-			sym.Sig = getSignature(val, sym)
+			sig, err := getSignature(val, sym, false)
+			if err != nil {
+				return nil, err
+			}
+			sym.Sig = sig
 			modInstance.Functions = append(modInstance.Functions, sym)
+			continue
 		}
-		// TODO: variables, classes, etc.
+		// classes
+		if inspect.Isclass(val).IsTrue() == 1 {
+			cls, err := parseClass(val, sym)
+			if err != nil {
+				return nil, err
+			}
+			modInstance.Classes = append(modInstance.Classes, cls)
+			continue
+		}
 	}
 	return modInstance, nil
 }

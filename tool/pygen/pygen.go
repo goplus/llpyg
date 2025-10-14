@@ -24,6 +24,7 @@ type context struct {
 	objPtr *types.Pointer
 	ret    *types.Tuple
 	py     gogen.PkgRef
+	structs 	map[string]*types.Named
 	skips  []symbol.Symbol
 }
 
@@ -89,7 +90,7 @@ func createGoPackage(mod symbol.Module) (ctx *context) {
 	obj := py.Ref("Object").(*types.TypeName).Type().(*types.Named)
 	objPtr := types.NewPointer(obj)
 	ret := types.NewTuple(pkg.NewParam(0, "", objPtr)) // return *py.Object
-	ctx = &context{pkg, obj, objPtr, ret, py, nil}
+	ctx = &context{pkg, obj, objPtr, ret, py, make(map[string]*types.Named), nil}
 	return ctx
 }
 
@@ -103,7 +104,8 @@ func (ctx *context) genMod(pkg *gogen.Package, mod *symbol.Module) {
 		funcMap[sym.Name] = true
 		ctx.genFunc(pkg, sym)
 	}
-	// TODO: class, variable, etc.
+	// classes
+	ctx.genClasses(pkg, mod.Classes)
 }
 
 
