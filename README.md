@@ -1,10 +1,10 @@
 llpyg - LLGo bindings autogen tool for Python libraries
 ====
 
-[![Build Status](https://github.com/goplus/llpyg/actions/workflows/llgo.yml/badge.svg)](https://github.com/goplus/llcppg/actions/workflows/llgo.yml)
-[![GitHub release](https://img.shields.io/github/v/tag/goplus/llcppg.svg?label=release)](https://github.com/goplus/llcppg/releases)
-[![Coverage Status](https://codecov.io/gh/goplus/llcppg/branch/main/graph/badge.svg)](https://codecov.io/gh/goplus/llcppg)
-[![GoDoc](https://pkg.go.dev/badge/github.com/goplus/llcppg.svg)](https://pkg.go.dev/github.com/goplus/llcppg)
+[![Build Status](https://github.com/goplus/llpyg/actions/workflows/llgo.yml/badge.svg)](https://github.com/goplus/llpyg/actions/workflows/llgo.yml)
+[![GitHub release](https://img.shields.io/github/v/tag/goplus/llpyg.svg?label=release)](https://github.com/goplus/llpyg/releases)
+[![Coverage Status](https://codecov.io/gh/goplus/llpyg/branch/main/graph/badge.svg)](https://codecov.io/gh/goplus/llpyg)
+[![GoDoc](https://pkg.go.dev/badge/github.com/goplus/llpyg.svg)](https://pkg.go.dev/github.com/goplus/llpyg)
 [![LLGo](https://img.shields.io/badge/powered_by-LLGo-green.svg)](https://github.com/xgo-dev/llgo)
 [![XGo](https://img.shields.io/badge/project-XGo-blue.svg)](https://github.com/goplus/xgo)
 

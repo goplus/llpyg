@@ -1,0 +1,55 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: LLGo
+
+on:
+  push:
+    branches:
+      - "llgo"
+  pull_request:
+    branches: [ "**" ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+        llvm: [22]
+        llgo: [v1.0.6]
+        go: [1.27]
+      fail-fast: false
+    runs-on: ${{matrix.os}}
+    steps:
+    - uses: actions/checkout@v7
+    - name: Setup llgo
+      shell: bash
+      env:
+        LLVM_VERSION: ${{ matrix.llvm }}
+        LLGO_REF: ${{ matrix.llgo }}
+        GO_VERSION: ${{ matrix.go }}.0
+      run: .github/scripts/install-llgo.sh
+
+    - name: Test with coverage
+      shell: bash
+      run: |
+        llgo test -v -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt ./...
+        go tool cover -func=coverage.txt | tail -1
+
+    - name: Upload coverage to Codecov
+      if: ${{ github.repository == 'goplus/llcppg' && !cancelled() && hashFiles('coverage.txt') != '' }}
+      uses: codecov/codecov-action@v7
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: coverage.txt
+        flags: llgo-tests
+        disable_search: true
+        fail_ci_if_error: true
