@@ -18,9 +18,9 @@ package main
 
 import (
 	"github.com/goplus/lib/c"
-	"github.com/goplus/lib/c/cjson"
 	"github.com/goplus/lib/py"
 	"github.com/goplus/lib/py/inspect"
+	"github.com/llarhub/cjson"
 )
 
 func main() {
@@ -32,29 +32,29 @@ func main() {
 
 	py.Initialize()
 
-	root := cjson.Object()
-	root.SetItem(c.Str("name"), cjson.String(pyLib))
+	root := cjson.CreateObject()
+	root.AddItemToObject(c.Str("name"), cjson.CreateString(pyLib))
 
-	items := cjson.Array()
+	items := cjson.CreateArray()
 	mod := py.ImportModule(pyLib)
 	keys := mod.ModuleGetDict().DictKeys()
 	for i, n := 0, keys.ListLen(); i < n; i++ {
 		key := keys.ListItem(i)
 		val := mod.GetAttr(key)
 		doc := val.GetAttrString(c.Str("__doc__"))
-		sym := cjson.Object()
-		sym.SetItem(c.Str("type"), cjson.String(val.Type().TypeName().CStr()))
-		sym.SetItem(c.Str("name"), cjson.String(key.CStr()))
+		sym := cjson.CreateObject()
+		sym.AddItemToObject(c.Str("type"), cjson.CreateString(val.Type().TypeName().CStr()))
+		sym.AddItemToObject(c.Str("name"), cjson.CreateString(key.CStr()))
 		if doc != nil {
-			sym.SetItem(c.Str("doc"), cjson.String(doc.CStr()))
+			sym.AddItemToObject(c.Str("doc"), cjson.CreateString(doc.CStr()))
 		}
 		if val.Callable() != 0 {
 			sig := inspect.Signature(val)
-			sym.SetItem(c.Str("sig"), cjson.String(sig.Str().CStr()))
+			sym.AddItemToObject(c.Str("sig"), cjson.CreateString(sig.Str().CStr()))
 		}
-		items.AddItem(sym)
+		cjson.AddItemToArray(items, sym)
 	}
-	root.SetItem(c.Str("items"), items)
+	root.AddItemToObject(c.Str("items"), items)
 
-	c.Printf(c.Str("%s\n"), root.CStr())
+	c.Printf(c.Str("%s\n"), root.Print())
 }
