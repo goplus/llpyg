@@ -18,9 +18,9 @@ package main
 
 import (
 	"github.com/goplus/lib/c"
-	"github.com/goplus/lib/py"
-	"github.com/goplus/lib/py/inspect"
 	"github.com/llarhub/cjson"
+	"github.com/llarhub/py"
+	"github.com/llarhub/py/inspect"
 )
 
 func main() {
@@ -37,13 +37,13 @@ func main() {
 
 	items := cjson.CreateArray()
 	mod := py.ImportModule(pyLib)
-	keys := mod.ModuleGetDict().DictKeys()
-	for i, n := 0, keys.ListLen(); i < n; i++ {
-		key := keys.ListItem(i)
-		val := mod.GetAttr(key)
-		doc := val.GetAttrString(c.Str("__doc__"))
+	keys := mod.Dict().Keys()
+	for i, n := py.SsizeT(0), keys.Size(); i < n; i++ {
+		key := keys.Item(i)
+		val := mod.Attr(key)
+		doc := val.AttrString(c.Str("__doc__"))
 		sym := cjson.CreateObject()
-		sym.AddItemToObject(c.Str("type"), cjson.CreateString(val.Type().TypeName().CStr()))
+		sym.AddItemToObject(c.Str("type"), cjson.CreateString(val.Type().Name().CStr()))
 		sym.AddItemToObject(c.Str("name"), cjson.CreateString(key.CStr()))
 		if doc != nil {
 			sym.AddItemToObject(c.Str("doc"), cjson.CreateString(doc.CStr()))
